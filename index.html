@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>릴라와 함사의 쇼핑 리스트</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -303,6 +304,11 @@
     </div>
 
     <script>
+        // Supabase 초기화
+        const SUPABASE_URL = 'https://icnngujioefpfshuqrug.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_JLf-P86UYsyzILQKatqrzQ_-G9sYHuE';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         const itemInput = document.getElementById('itemInput');
         const addBtn = document.getElementById('addBtn');
         const listSection = document.getElementById('listSection');
@@ -310,11 +316,7 @@
         const footer = document.getElementById('footer');
         const itemCount = document.getElementById('itemCount');
 
-        let items = JSON.parse(localStorage.getItem('shoppingList')) || [];
-
-        function saveItems() {
-            localStorage.setItem('shoppingList', JSON.stringify(items));
-        }
+        let items = [];
 
         function updateUI() {
             const hasItems = items.length > 0;
@@ -327,13 +329,13 @@
             const existingItems = listSection.querySelectorAll('.item');
             existingItems.forEach(item => item.remove());
 
-            items.forEach((item, index) => {
+            items.forEach((item) => {
                 const div = document.createElement('div');
                 div.className = `item ${item.checked ? 'checked' : ''}`;
                 div.innerHTML = `
-                    <div class="checkbox" onclick="toggleItem(${index})"></div>
+                    <div class="checkbox" onclick="toggleItem(${item.id})"></div>
                     <span class="item-text">${escapeHtml(item.text)}</span>
-                    <button class="delete-btn" onclick="deleteItem(${index})">×</button>
+                    <button class="delete-btn" onclick="deleteItem(${item.id})">×</button>
                 `;
                 listSection.appendChild(div);
             });
@@ -347,27 +349,68 @@
             return div.innerHTML;
         }
 
-        function addItem() {
+        async function loadItems() {
+            const { data, error } = await supabase
+                .from('shopping_items')
+                .select('*')
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                console.error('Error loading items:', error);
+                return;
+            }
+            items = data || [];
+            renderItems();
+        }
+
+        async function addItem() {
             const text = itemInput.value.trim();
             if (!text) return;
 
-            items.push({ text, checked: false });
-            saveItems();
-            renderItems();
+            const { data, error } = await supabase
+                .from('shopping_items')
+                .insert([{ text, checked: false }])
+                .select();
+
+            if (error) {
+                console.error('Error adding item:', error);
+                return;
+            }
+
             itemInput.value = '';
             itemInput.focus();
+            await loadItems();
         }
 
-        function toggleItem(index) {
-            items[index].checked = !items[index].checked;
-            saveItems();
-            renderItems();
+        async function toggleItem(id) {
+            const item = items.find(i => i.id === id);
+            if (!item) return;
+
+            const { error } = await supabase
+                .from('shopping_items')
+                .update({ checked: !item.checked })
+                .eq('id', id);
+
+            if (error) {
+                console.error('Error toggling item:', error);
+                return;
+            }
+
+            await loadItems();
         }
 
-        function deleteItem(index) {
-            items.splice(index, 1);
-            saveItems();
-            renderItems();
+        async function deleteItem(id) {
+            const { error } = await supabase
+                .from('shopping_items')
+                .delete()
+                .eq('id', id);
+
+            if (error) {
+                console.error('Error deleting item:', error);
+                return;
+            }
+
+            await loadItems();
         }
 
         addBtn.addEventListener('click', addItem);
@@ -375,7 +418,8 @@
             if (e.key === 'Enter') addItem();
         });
 
-        renderItems();
+        // 초기 데이터 로드
+        loadItems();
     </script>
 </body>
 </html>
