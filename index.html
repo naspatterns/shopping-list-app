@@ -307,7 +307,7 @@
         // Supabase 초기화
         const SUPABASE_URL = 'https://icnngujioefpfshuqrug.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_JLf-P86UYsyzILQKatqrzQ_-G9sYHuE';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const itemInput = document.getElementById('itemInput');
         const addBtn = document.getElementById('addBtn');
@@ -350,7 +350,7 @@
         }
 
         async function loadItems() {
-            const { data, error } = await supabase
+            const { data, error } = await db
                 .from('shopping_items')
                 .select('*')
                 .order('created_at', { ascending: true });
@@ -367,7 +367,7 @@
             const text = itemInput.value.trim();
             if (!text) return;
 
-            const { data, error } = await supabase
+            const { data, error } = await db
                 .from('shopping_items')
                 .insert([{ text, checked: false }])
                 .select();
@@ -386,7 +386,7 @@
             const item = items.find(i => i.id === id);
             if (!item) return;
 
-            const { error } = await supabase
+            const { error } = await db
                 .from('shopping_items')
                 .update({ checked: !item.checked })
                 .eq('id', id);
@@ -400,7 +400,7 @@
         }
 
         async function deleteItem(id) {
-            const { error } = await supabase
+            const { error } = await db
                 .from('shopping_items')
                 .delete()
                 .eq('id', id);
